@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
+from typing import Callable, Union
 
 from radfact.azure_utils.auth import get_azure_token_provider, get_from_env_or_vault
 from radfact.paths import WORKSPACE_CONFIG_PATH
@@ -31,8 +31,8 @@ class Endpoint:
     # The name of the Redis cache for this endpoint. If empty, no cache is used. Make sure to update the cache
     # location if the model type changes significantly, and we expect different responses.
     redis_cache: str = ""
-    _api_key: str | None = field(default=None, init=False)
-    _token_provider: Callable[[], str] | None = field(default=None, init=False)
+    _api_key: Union[str, None] = field(default=None, init=False)
+    _token_provider: Union[Callable[[], str], None] = field(default=None, init=False)
 
     @property
     def api_key(self) -> str:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from typing import Generic, Iterator, Mapping, TypeVar
+from typing import Generic, Iterator, Mapping, TypeVar, List, Union, Optional
 
 TypeT = TypeVar("TypeT", float, int)
 
@@ -47,7 +47,7 @@ class NormalizedBox(GenericBox[float]):
 
 
 BoxDictType = dict[str, float]
-GroundedPhraseDictType = Mapping[str, str | list[BoxDictType]]
+GroundedPhraseDictType = Mapping[str, Union[str , list[BoxDictType]]]
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ class GroundedPhrase:
     """A grounded phrase consists of a string with an (optional) list of normalized bounding boxes."""
 
     text: str
-    boxes: list[NormalizedBox] | None = None
+    boxes: Optional[list[NormalizedBox]] = None
 
     def __post_init__(self) -> None:
         if self.boxes is not None and len(self.boxes) == 0:
@@ -75,9 +75,9 @@ class GroundedPhrase:
             raise ValueError(f"boxes is not a list: {box_list}")
 
 
-GroundedPhraseListType = list[str | NormalizedBox | GroundedPhrase]
+GroundedPhraseListType = list[Union[str, NormalizedBox, GroundedPhrase]]
 
-GroundedPhraseListDictType = list[Mapping[str, str | BoxDictType | list[BoxDictType]]]
+GroundedPhraseListDictType = list[Mapping[str, Union[str, BoxDictType, list[BoxDictType]]]]
 
 
 class GroundedPhraseList(GroundedPhraseListType):

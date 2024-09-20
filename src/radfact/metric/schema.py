@@ -6,6 +6,7 @@
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Union, Optional
 
 import numpy as np
 
@@ -33,10 +34,10 @@ class RadFactScore:
     spatial_recall: float
     grounding_precision: float
     grounding_recall: float
-    num_candidate_phrases: int | float
-    num_reference_phrases: int | float
-    num_candidate_phrases_with_boxes: int | float
-    num_reference_phrases_with_boxes: int | float
+    num_candidate_phrases: Union[int, float]
+    num_reference_phrases: Union[int, float]
+    num_candidate_phrases_with_boxes: Union[int, float]
+    num_reference_phrases_with_boxes: Union[int, float]
 
     @staticmethod
     def _compute_f1_score(precision: float, recall: float) -> float:
@@ -78,7 +79,7 @@ class RadFactScore:
         scores. The spatial and grounding scores are set to 0.0.
         """
 
-        def _nanmean(values: list[float | int]) -> float:
+        def _nanmean(values: list[Union[float, int]]) -> float:
             """
             Compute the mean of the values, ignoring NaNs.
             This is mostly for mypy convenience.
@@ -128,12 +129,14 @@ class SpatialEntailmentStatus(str, Enum):
     NO_SPATIAL_ENTAILMENT = "no_spatial_entailment"
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True)
 class GroundedPhraseEvidenced(GroundedPhrase):
-    status: str
-    spatial_entailment_status: SpatialEntailmentStatus | None = None
-    evidence: list[GroundedPhrase]
-    evidence_indices: list[int] | None = None
+    text: Optional[str] = None
+    status: Optional[str] = None
+    evidence: Optional[list[GroundedPhrase]] = None
+    boxes: Optional[list[str]] = field(default=None)  # Inherited and optional
+    spatial_entailment_status: Optional[str] = field(default=None)
+    evidence_indices: Optional[list[int]] = field(default=None)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -221,6 +224,6 @@ class GroundedPhraseEvidenced(GroundedPhrase):
 @dataclass(frozen=True)
 class PerSampleNLIResult:
     study_id: str
-    scores: RadFactScore | None = None
+    scores: Union[RadFactScore, None] = None
     candidate_phrases: list[GroundedPhraseEvidenced] = field(default_factory=list)
     reference_phrases: list[GroundedPhraseEvidenced] = field(default_factory=list)

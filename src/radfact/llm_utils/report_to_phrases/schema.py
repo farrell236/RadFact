@@ -5,7 +5,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Union
 
 from pydantic import BaseModel, root_validator
 
@@ -74,18 +74,18 @@ class ParsedReport(BaseModelWithId):
 class PhraseParsingExample(BaseModel):
     """Dataclass for a single example."""
 
-    example_id: int | str
+    example_id: Union[int, str]
     findings_text: str
-    parsed_report: ParsedReport | None = None
-    study_id: str | None = None
-    example_rationale: str | None = None
+    parsed_report: Union[ParsedReport, None] = None
+    study_id: Union[str, None] = None
+    example_rationale: Union[str, None] = None
 
     @property
     def input(self) -> str:
         return self.findings_text
 
     @property
-    def output(self) -> ParsedReport | None:
+    def output(self) -> Union[ParsedReport, None]:
         return self.parsed_report
 
     @root_validator

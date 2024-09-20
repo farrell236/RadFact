@@ -8,7 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 from azure.identity import AzureCliCredential, DefaultAzureCredential
 from azureml._restclient.models.error_response import ErrorResponseException
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 AZURE_COGNITIVE_SERVICES = "https://cognitiveservices.azure.com"
 
 
-def get_from_vault(secret_name: str, workspace_config_path: Path | None = None) -> str:
+def get_from_vault(secret_name: str, workspace_config_path: Union[Path, None] = None) -> str:
     """Reads a secret from the keyvault given the secret name.
 
     :param secret_name: The name of the secret in the keyvault.
@@ -41,7 +41,7 @@ def get_from_vault(secret_name: str, workspace_config_path: Path | None = None) 
 
 
 def get_from_env_or_vault(
-    env_var_name: str = "", secret_name: str = "", workspace_config_path: Path | None = None
+    env_var_name: str = "", secret_name: str = "", workspace_config_path: Union[Path, None] = None
 ) -> str:
     """Reads a value from an environment variable if possible.
     Otherwise, tries to read it from the keyvault given the secret name.
@@ -62,7 +62,7 @@ def get_from_env_or_vault(
     return value
 
 
-def get_credential() -> AzureCliCredential | DefaultAzureCredential:
+def get_credential() -> Union[AzureCliCredential, DefaultAzureCredential]:
     """Get the appropriate Azure credential based on the environment. If the Azure CLI is installed and logged in,
     the Azure CLI credential is returned. Otherwise, the default Azure credential is returned."""
     try:

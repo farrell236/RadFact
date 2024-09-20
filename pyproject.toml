@@ -30,7 +30,7 @@ name = "radfact"
 version = "1.0.0"
 description = "RadFact: Code for the entailment verification metric RadFact"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
     { name = "Biomedical Imaging Team - Health Futures UK", email = "BioMedicalImaging@microsoft.com" },
 ]

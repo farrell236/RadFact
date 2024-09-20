@@ -7,7 +7,7 @@ import logging
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Generic, Iterable, Protocol, TypeVar
+from typing import Any, Callable, Generic, Iterable, Protocol, TypeVar, Union
 
 import yaml
 from langchain.chains import LLMChain
@@ -40,13 +40,12 @@ def simple_formatter(obj: BaseModel, style: FormatStyleOptions) -> str:
     :param style: The desired output format.
     :return: The formatted string.
     """
-    match style:
-        case FormatStyleOptions.JSON:
-            return str(obj.json())
-        case FormatStyleOptions.YAML:
-            return yaml.dump(obj.dict(), sort_keys=False)
-        case _:
-            raise ValueError(f"Unrecognized format style: {style}.")
+    if style == FormatStyleOptions.JSON:
+        return str(obj.json())
+    elif style == FormatStyleOptions.YAML:
+        return yaml.dump(obj.dict(), sort_keys=False)
+    else:
+        raise ValueError(f"Unrecognized format style: {style}.")
 
 
 class Example(Protocol, Generic[QueryT, ResultT]):
@@ -62,7 +61,7 @@ class QueryTemplate(BaseChatPromptTemplate, Generic[QueryT, ResultT]):
     system_prompt: str
     format_query_fn: Callable[[QueryT], str]
     format_output_fn: Callable[[ResultT], str]
-    examples: Iterable[Example[QueryT, ResultT]] | None
+    examples: Union[Iterable[Example[QueryT, ResultT]], None]
 
     def __init__(
         self,
@@ -70,7 +69,7 @@ class QueryTemplate(BaseChatPromptTemplate, Generic[QueryT, ResultT]):
         query_type: type[QueryT],
         format_query_fn: Callable[[QueryT], str],
         format_output_fn: Callable[[ResultT], str],
-        examples: Iterable[Example[QueryT, ResultT]] | None = None,
+        examples: Union[Iterable[Example[QueryT, ResultT]], None] = None,
     ) -> None:
         super().__init__(  # type: ignore
             input_variables=[_QUERY_KEY],
@@ -81,7 +80,7 @@ class QueryTemplate(BaseChatPromptTemplate, Generic[QueryT, ResultT]):
         )
         self.examples = examples
 
-    def prepare_few_shot_examples(self, examples: Iterable[Example[QueryT, ResultT]] | None) -> list[BaseMessage]:
+    def prepare_few_shot_examples(self, examples: Union[Iterable[Example[QueryT, ResultT]], None]) -> list[BaseMessage]:
         """Prepare few shot examples as human-assistant message pairs.
 
         :param examples: List of few shot examples.
@@ -122,13 +121,13 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
         self,
         query_type: type[QueryT],
         result_type: type[ResultT],
-        system_prompt: str | Path,
+        system_prompt: Union[str, Path],
         format_query_fn: Callable[[QueryT], str],
-        format_output_fn: Callable[[ResultT], str] | None = None,
-        model: BaseLanguageModel[str] | BaseLanguageModel[BaseMessage] | None = None,
-        log_dir: Path | None = None,
-        few_shot_examples: Iterable[Example[QueryT, ResultT]] | None = None,
-        validate_result_fn: Callable[[QueryT, ResultT], None] | None = None,
+        format_output_fn: Union[Callable[[ResultT], str], None] = None,
+        model: Union[BaseLanguageModel[str], BaseLanguageModel[BaseMessage], None] = None,
+        log_dir: Union[Path, None] = None,
+        few_shot_examples: Union[Iterable[Example[QueryT, ResultT]], None] = None,
+        validate_result_fn: Union[Callable[[QueryT, ResultT], None], None] = None,
         use_schema_in_system_prompt: bool = True,
         output_format: FormatStyleOptions = FormatStyleOptions.JSON,
     ) -> None:
@@ -167,16 +166,15 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
 
         self.validate_result_fn = validate_result_fn
 
-        self.parser: PydanticOutputParser[ResultT] | YamlOutputParser[ResultT]
-        match self.output_format:
-            case FormatStyleOptions.YAML:
-                self.parser = YamlOutputParser(pydantic_object=result_type)
-            case FormatStyleOptions.JSON:
-                self.parser = PydanticOutputParser(pydantic_object=result_type)
-            case _:
-                raise ValueError(
-                    f"Unrecognized output format: {self.output_format}. Should be one of {FormatStyleOptions}."
-                )
+        self.parser: Union[PydanticOutputParser[ResultT], YamlOutputParser[ResultT]]
+        if self.output_format == FormatStyleOptions.YAML:
+            self.parser = YamlOutputParser(pydantic_object=result_type)
+        elif self.output_format == FormatStyleOptions.JSON:
+            self.parser = PydanticOutputParser(pydantic_object=result_type)
+        else:
+            raise ValueError(
+                f"Unrecognized output format: {self.output_format}. Should be one of {FormatStyleOptions}."
+            )
 
         if use_schema_in_system_prompt:
             self.system_prompt += "\n\n" + self.parser.get_format_instructions()
@@ -189,7 +187,7 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
             examples=few_shot_examples,
         )
         self.log_dir = log_dir
-        self.chain: LLMChain | None = None
+        self.chain: Union[LLMChain, None] = None
         if model is not None:
             self.set_model(model=model)
 
@@ -197,7 +195,7 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
         self.num_failures: int = 0
         self.num_success: int = 0
 
-    def set_model(self, model: BaseLanguageModel[str] | BaseLanguageModel[BaseMessage]) -> None:
+    def set_model(self, model: Union[BaseLanguageModel[str], BaseLanguageModel[BaseMessage]]) -> None:
         self.chain = LLMChain(prompt=self.query_template, llm=model, output_parser=self.parser)
 
     def _write_error(self, ex: Exception, query: QueryT, query_id: str) -> None:
@@ -209,7 +207,7 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
             error_log_path.write_text(error_message)
             logger.info(f"Error details saved to {error_log_path}.")
 
-    def run(self, query: QueryT, query_id: str) -> ResultT | None:
+    def run(self, query: QueryT, query_id: str) -> Union[ResultT, None]:
         assert self.chain, "Model not set. Call `set_model` first."
         try:
             response: ResultT = self.chain.invoke({_QUERY_KEY: query})[self.chain.output_key]

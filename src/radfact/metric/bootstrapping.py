@@ -4,7 +4,7 @@
 #  ------------------------------------------------------------------------------------------
 
 import logging
-from typing import Generator
+from typing import Generator, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -25,7 +25,7 @@ def _collate_list_of_dicts(dicts: list[dict[str, float]]) -> dict[str, list[floa
 class MetricBootstrapper:
     """Utility to report bootstrapping statistics for RadFact metric."""
 
-    def __init__(self, metric: RadFactMetric, num_samples: int, seed: int | None = None) -> None:
+    def __init__(self, metric: RadFactMetric, num_samples: int, seed: Union[int, None] = None) -> None:
         """
         :param metric: The metric for which to compute bootstrap statistics (e.g. RadFactMetric).
         :param num_samples: Number of bootstrap samples to generate, ideally in the hundreds.
@@ -37,9 +37,9 @@ class MetricBootstrapper:
 
     def _generate_bootstrap_results(
         self,
-        candidates: InputDict | None = None,
-        references: InputDict | None = None,
-        results_per_sample: PerSampleResultType | None = None,
+        candidates: Union[InputDict, None] = None,
+        references: Union[InputDict, None] = None,
+        results_per_sample: Union[PerSampleResultType, None] = None,
     ) -> Generator[ReturnType, None, None]:
         """Compute the bootstrap results for a radfact metric by drawing `num_samples` samples with replacement,
         and re-computing the metric.
@@ -85,9 +85,9 @@ class MetricBootstrapper:
 
     def compute_bootstrap_metrics(
         self,
-        candidates: InputDict | None = None,
-        references: InputDict | None = None,
-        results_per_sample: PerSampleResultType | None = None,
+        candidates: Union[InputDict, None] = None,
+        references: Union[InputDict, None] = None,
+        results_per_sample: Union[PerSampleResultType, None] = None,
     ) -> dict[str, float]:
         """Calculate bootstrap statistics for RadFact metric that has intermediate per-sample results.
 

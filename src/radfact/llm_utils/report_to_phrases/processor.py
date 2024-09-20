@@ -4,7 +4,7 @@
 #  ------------------------------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import pandas as pd
 from omegaconf import DictConfig
@@ -17,10 +17,10 @@ from radfact.paths import OUTPUT_DIR, get_prompts_dir
 FINDINGS_SECTION = "FINDINGS"
 PARSING_TASK = "report_to_phrases"
 PROMPTS_DIR = get_prompts_dir(task=PARSING_TASK)
-StudyIdType = str | int
+StudyIdType = Union[str, int]
 
 
-def get_report_to_phrases_processor(log_dir: Path | None = None) -> StructuredProcessor[str, ParsedReport]:
+def get_report_to_phrases_processor(log_dir: Union[Path, None] = None) -> StructuredProcessor[str, ParsedReport]:
     """Return a processor for converting reports to phrases.
 
     :param log_dir: The directory to save logs.

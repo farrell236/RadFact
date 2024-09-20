@@ -5,7 +5,7 @@
 
 import logging
 from dataclasses import asdict, replace
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Union
 
 import hydra
 import numpy as np
@@ -35,7 +35,7 @@ http_logger.setLevel(logging.WARNING)
 
 
 ReturnType = tuple[float, dict[str, float]]
-InputType = GroundedPhraseList | str
+InputType = Union[GroundedPhraseList, str]
 InputDict = Mapping[StudyIdType, InputType]
 GroundedPhraseListDict = dict[StudyIdType, GroundedPhraseList]
 PerSampleResultType = list[PerSampleNLIResult]
@@ -58,7 +58,7 @@ def init_hydra_config(config_name: str) -> DictConfig:
     return cfg
 
 
-def _divide_or_nan(numerator: float | int, denominator: float | int) -> float:
+def _divide_or_nan(numerator: Union[float, int], denominator: Union[float, int]) -> float:
     """Divide the numerator by the denominator, or return NaN if the denominator is zero."""
     return numerator / denominator if denominator != 0 else np.nan
 
@@ -66,8 +66,8 @@ def _divide_or_nan(numerator: float | int, denominator: float | int) -> float:
 class RadFactMetric:
     def __init__(
         self,
-        nli_config_name: str | None = None,
-        phrase_config_name: str | None = None,
+        nli_config_name: Union[str, None] = None,
+        phrase_config_name: Union[str, None] = None,
         image_size: int = 224,
         box_precision_threshold: float = 0.5,
         is_narrative_text: bool = False,
@@ -94,7 +94,7 @@ class RadFactMetric:
         self.is_narrative_text = is_narrative_text
         self.meta_metrics: dict[str, float] = {}  # Metrics about the metric, derived from processors. Not per-sample.
 
-    def _are_boxes_entailed(self, boxes: list[NormalizedBox] | None, evidence_boxes: list[NormalizedBox]) -> bool:
+    def _are_boxes_entailed(self, boxes: Union[list[NormalizedBox], None], evidence_boxes: list[NormalizedBox]) -> bool:
         """
         Compute whether the boxes are sufficiently covered by the evidence boxes.
         """
@@ -268,7 +268,7 @@ class RadFactMetric:
         self.meta_metrics[f"{report_to_phrases_prefix}/num_dropped_candidates"] = num_dropped_candidates
         self.meta_metrics[f"{report_to_phrases_prefix}/num_dropped_references"] = num_dropped_references
 
-        return candidates_filtered, references_filtered  # type: ignore [return-value]
+        return candidates_filtered, references_filtered  ## type: ignore [return-value]
 
     def convert_input_to_multimodal(
         self, candidates: InputDict, references: InputDict

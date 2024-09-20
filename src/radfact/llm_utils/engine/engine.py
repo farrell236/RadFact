@@ -9,7 +9,7 @@ import multiprocessing
 import os
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 import numpy as np
 import pandas as pd
@@ -68,7 +68,7 @@ class LLMEngine:
         processor: BaseProcessor[Any, Any],
         dataset_df: pd.DataFrame,
         progress_output_folder: Path,
-        final_output_folder: Path | None = None,
+        final_output_folder: Union[Path, None] = None,
         row_to_query_fn: Callable[["pd.Series[Any]"], Any] = lambda x: x,
         verbose: bool = False,
     ) -> None:
@@ -129,31 +129,33 @@ class LLMEngine:
     def get_processing_args(self, cfg: DictConfig) -> LLMEngineArguments:
         return LLMEngineArguments(**cfg.processing)
 
-    def set_llm_cache(self, langchain_cache_type: str | None) -> None:
-        match langchain_cache_type:
-            case "" | None:
-                # By default, there is no cache. Setting this explicitly here because there are unit tests
-                # with and without cache, which would otherwise interfere with each other.
-                set_llm_cache(None)
-            case "redis":
-                redis_cache_per_endpoint = {name: endpoint.redis_cache for name, endpoint in self.endpoints.items()}
-                unique_cache_names = set(redis_cache_per_endpoint.values())
-                if len(unique_cache_names) > 1:
-                    raise ValueError(
-                        f"Expected all endpoints to have the same cache, but got {len(unique_cache_names)} different "
-                        f"values: {redis_cache_per_endpoint}"
-                    )
-                redis_cache_name = next(iter(unique_cache_names))
-                if len(redis_cache_name) > 0:
-                    try:
-                        set_llm_cache(get_redis_cache(redis_cache_name=redis_cache_name))
-                    except Exception:
-                        logger.exception(f"Failed to connect to Redis cache {redis_cache_name}")
-                        logger.warning("This run will continue, but not use any cache.")
-            case "sqlite":
-                set_llm_cache(SQLiteCache())
-            case _:
-                raise RuntimeError(f"Unknown cache type '{langchain_cache_type}'. Must be one of 'redis' or 'sqlite'.")
+    def set_llm_cache(self, langchain_cache_type: Union[str, None]) -> None:
+        if langchain_cache_type == "" or langchain_cache_type is None:
+            # By default, there is no cache. Setting this explicitly here because there are unit tests
+            # with and without cache, which would otherwise interfere with each other.
+            set_llm_cache(None)
+
+        elif langchain_cache_type == "redis":
+            redis_cache_per_endpoint = {name: endpoint.redis_cache for name, endpoint in self.endpoints.items()}
+            unique_cache_names = set(redis_cache_per_endpoint.values())
+            if len(unique_cache_names) > 1:
+                raise ValueError(
+                    f"Expected all endpoints to have the same cache, but got {len(unique_cache_names)} different "
+                    f"values: {redis_cache_per_endpoint}"
+                )
+            redis_cache_name = next(iter(unique_cache_names))
+            if len(redis_cache_name) > 0:
+                try:
+                    set_llm_cache(get_redis_cache(redis_cache_name=redis_cache_name))
+                except Exception:
+                    logger.exception(f"Failed to connect to Redis cache {redis_cache_name}")
+                    logger.warning("This run will continue, but not use any cache.")
+
+        elif langchain_cache_type == "sqlite":
+            set_llm_cache(SQLiteCache())
+
+        else:
+            raise RuntimeError(f"Unknown cache type '{langchain_cache_type}'. Must be one of 'redis' or 'sqlite'.")
 
     def get_run_id(self) -> str:
         """Return the run id as a timestamp."""

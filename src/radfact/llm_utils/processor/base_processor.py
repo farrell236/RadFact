@@ -4,7 +4,7 @@
 #  ------------------------------------------------------------------------------------------
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Union
 
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import BaseMessage
@@ -17,18 +17,18 @@ BaseResultT = TypeVar("BaseResultT")
 class BaseModelWithId(BaseModel):
     """Base class for models that have an ID."""
 
-    id: int | str | None = None
+    id: Union[int, str, None] = None
 
 
 class BaseProcessor(Generic[QueryT, BaseResultT], metaclass=ABCMeta):
     """Base class for processors that interact with language models."""
 
     @abstractmethod
-    def set_model(self, model: BaseLanguageModel[str] | BaseLanguageModel[BaseMessage]) -> None:
+    def set_model(self, model: Union[BaseLanguageModel[str], BaseLanguageModel[BaseMessage]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def run(self, query: QueryT, query_id: str) -> BaseResultT | None:
+    def run(self, query: QueryT, query_id: str) -> Union[BaseResultT, None]:
         raise NotImplementedError
 
     def get_processor_stats(self) -> Any:

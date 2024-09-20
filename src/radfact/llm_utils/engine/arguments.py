@@ -6,7 +6,7 @@
 import logging
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Union
 
 from azureml._restclient.models.error_response import ErrorResponseException
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 class OpenaiAPIArguments(metaclass=ABCMeta):
     """Base class for OpenAI API models."""
 
-    endpoint: Endpoint | None = field(default=None)
+    endpoint: Union[Endpoint, None] = field(default=None)
     api_version: str = field(default="2023-06-01-preview")
     max_retries: int = field(default=10)
-    timeout: float | None = field(default=None)
+    timeout: Union[float, None] = field(default=None)
 
     def set_endpoint(self, endpoint: Endpoint) -> None:
         """Set the endpoint for the API."""
@@ -38,33 +38,34 @@ class OpenaiAPIArguments(metaclass=ABCMeta):
         """
         if self.endpoint is None:
             raise ValueError("Endpoint must be set before getting the params.")
-        match self.endpoint.type:
-            case EndpointType.AZURE_CHAT_OPENAI:
-                params = dict(
-                    deployment_name=self.endpoint.deployment_name,
-                    azure_endpoint=self.endpoint.url,
-                    openai_api_version=self.api_version,
-                    max_retries=self.max_retries,
-                    request_timeout=self.timeout,
+        if self.endpoint.type == EndpointType.AZURE_CHAT_OPENAI:
+            params = dict(
+                deployment_name=self.endpoint.deployment_name,
+                azure_endpoint=self.endpoint.url,
+                openai_api_version=self.api_version,
+                max_retries=self.max_retries,
+                request_timeout=self.timeout,
+            )
+            try:
+                params["openai_api_key"] = self.endpoint.api_key
+            except (ValueError, ErrorResponseException):
+                logger.info(
+                    "Could not find API key in environment variables nor in the keyvault... Trying token provider."
                 )
-                try:
-                    params["openai_api_key"] = self.endpoint.api_key
-                except (ValueError, ErrorResponseException):
-                    logger.info(
-                        "Could not find API key in environment variables nor in the keyvault... Trying token provider."
-                    )
-                    params["azure_ad_token_provider"] = self.endpoint.token_provider
-                return params
-            case EndpointType.CHAT_OPENAI:
-                return dict(
-                    model=self.endpoint.deployment_name,
-                    base_url=self.endpoint.url,
-                    openai_api_key=self.endpoint.api_key,
-                    max_retries=self.max_retries,
-                    request_timeout=self.timeout,
-                )
-            case _:
-                raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
+                params["azure_ad_token_provider"] = self.endpoint.token_provider
+            return params
+
+        elif self.endpoint.type == EndpointType.CHAT_OPENAI:
+            return dict(
+                model=self.endpoint.deployment_name,
+                base_url=self.endpoint.url,
+                openai_api_key=self.endpoint.api_key,
+                max_retries=self.max_retries,
+                request_timeout=self.timeout,
+            )
+
+        else:
+            raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
 
     @abstractmethod
     def get_model(self) -> ChatOpenAI:
@@ -81,7 +82,7 @@ class LLMAPIArguments(OpenaiAPIArguments):
     top_p: float = field(default=0.95)
     frequency_penalty: float = field(default=0.0)
     presence_penalty: float = field(default=0.0)
-    stop: list[str] | None = field(default=None)
+    stop: Union[list[str], None] = field(default=None)
     n_completions: int = field(default=1)
 
     def get_chat_completion_params(self) -> dict[str, Any]:
@@ -107,15 +108,14 @@ class LLMAPIArguments(OpenaiAPIArguments):
         params.update(self.get_chat_completion_params())
         return params
 
-    def get_model(self) -> ChatOpenAI | AzureChatOpenAI:
+    def get_model(self) -> Union[ChatOpenAI, AzureChatOpenAI]:
         assert self.endpoint is not None  # for mypy
-        match self.endpoint.type:
-            case EndpointType.AZURE_CHAT_OPENAI:
-                return AzureChatOpenAI(**self.get_params())
-            case EndpointType.CHAT_OPENAI:
-                return ChatOpenAI(**self.get_params())
-            case _:
-                raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
+        if self.endpoint.type == EndpointType.AZURE_CHAT_OPENAI:
+            return AzureChatOpenAI(**self.get_params())
+        elif self.endpoint.type == EndpointType.CHAT_OPENAI:
+            return ChatOpenAI(**self.get_params())
+        else:
+            raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
 
 
 @dataclass
@@ -132,6 +132,6 @@ class LLMEngineArguments:
     index_col: str
     batch_size: int = 100
     start_index: int = 0
-    dataset_name: str | None = field(default=None)
-    end_index: int | None = field(default=None)
+    dataset_name: Union[str, None] = field(default=None)
+    end_index: Union[int, None] = field(default=None)
     output_filename: str = "output.json"

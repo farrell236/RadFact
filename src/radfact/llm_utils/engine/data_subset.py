@@ -6,6 +6,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Union
 
 import pandas as pd
 
@@ -54,12 +55,12 @@ class DataSubset:
         return len(self.processed_ids) / len(self.df)
 
     @property
-    def progress_stats(self) -> dict[str, str | float]:
+    def progress_stats(self) -> dict[str, Union[str, float]]:
         """Return the name of the progress metric for this subset of the dataset."""
         return {"name": f"progress_{self.start_index}_{self.end_index}", "value": self.relative_progress}
 
     @property
-    def skipped_stats(self) -> dict[str, str | int]:
+    def skipped_stats(self) -> dict[str, Union[str, int]]:
         """Return the name of the skipped metric for this subset of the dataset."""
         return {"name": f"skipped_{self.start_index}_{self.end_index}", "value": len(self.skipped_ids)}
 

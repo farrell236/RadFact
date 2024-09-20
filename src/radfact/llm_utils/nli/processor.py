@@ -7,7 +7,7 @@ import logging
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 import pandas as pd
 from langchain_core.language_models import BaseLanguageModel
@@ -94,7 +94,7 @@ class ReportGroundingNLIProcessor(BaseProcessor[NLIQuerySample, NLISample]):
     NUM_LLM_SUCCESS = "num_llm_success"
     NUM_LLM_PHRASE_REWRITES = "num_llm_phrase_rewrites"
 
-    def __init__(self, format_query_fn: Callable[..., Any] | None = None) -> None:
+    def __init__(self, format_query_fn: Union[Callable[..., Any], None] = None) -> None:
         super().__init__()
         self.format_query_fn = format_query_fn
         self.phrase_processor = get_ev_processor_singlephrase(log_dir=OUTPUT_DIR / "ev_processor_logs")
@@ -135,10 +135,10 @@ class ReportGroundingNLIProcessor(BaseProcessor[NLIQuerySample, NLISample]):
                 single_response = single_response.copy(update={"phrase": single_phrase.input.hypothesis})
         return single_response
 
-    def set_model(self, model: BaseLanguageModel[str] | BaseLanguageModel[BaseMessage]) -> None:
+    def set_model(self, model: Union[BaseLanguageModel[str], BaseLanguageModel[BaseMessage]]) -> None:
         self.phrase_processor.set_model(model)
 
-    def run(self, query: NLIQuerySample | Any, query_id: str) -> NLISample | None:
+    def run(self, query: Union[NLIQuerySample, Any], query_id: str) -> Union[NLISample, None]:
         if self.format_query_fn is not None:
             query = self.format_query_fn(query)
         assert isinstance(
